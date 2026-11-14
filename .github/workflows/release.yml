@@ -1,0 +1,162 @@
+name: Release
+
+# Publie une release GitHub dès que la version de pubspec.yaml change sur main
+# (ou manuellement). L'application vérifie ces releases pour se mettre à jour.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  FLUTTER_VERSION: "3.50.0"
+
+jobs:
+  version:
+    name: Détection de la version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      tag: ${{ steps.v.outputs.tag }}
+      exists: ${{ steps.v.outputs.exists }}
+    steps:
+      - uses: actions/checkout@v5
+      - id: v
+        run: |
+          VERSION=$(grep -E '^version:' pubspec.yaml | sed -E 's/version:[[:space:]]*([^+]+).*/\1/' | tr -d '[:space:]')
+          TAG="v$VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" > /dev/null; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "La release $TAG existe déjà : rien à publier. Augmente la version dans pubspec.yaml pour publier." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "Nouvelle version détectée : $TAG" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  test:
+    name: Analyse et tests
+    needs: version
+    if: needs.version.outputs.exists == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+
+  android:
+    name: Build Android
+    needs: [version, test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Clé de signature
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KEYSTORE_PASSWORD" ]; then
+            echo "::error::Les secrets ANDROID_KEYSTORE_BASE64 et ANDROID_KEYSTORE_PASSWORD sont requis : sans clé fixe, les mises à jour de l'APK ne s'installeraient pas par-dessus la version précédente. Voir README."
+            exit 1
+          fi
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/choutify.jks"
+          echo "CHOUTIFY_KEYSTORE_PATH=$RUNNER_TEMP/choutify.jks" >> "$GITHUB_ENV"
+          echo "CHOUTIFY_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+          echo "CHOUTIFY_KEY_ALIAS=choutify" >> "$GITHUB_ENV"
+      - run: flutter pub get
+      - name: APK universel
+        run: flutter build apk --release --build-name=${{ needs.version.outputs.version }} --build-number=${{ github.run_number }}
+      - name: APK par architecture
+        run: flutter build apk --release --split-per-abi --build-name=${{ needs.version.outputs.version }} --build-number=${{ github.run_number }}
+      - name: Renommage
+        run: |
+          V=${{ needs.version.outputs.version }}
+          mkdir -p dist
+          cp build/app/outputs/flutter-apk/app-release.apk "dist/Choutify-$V-universal.apk"
+          for abi in arm64-v8a armeabi-v7a x86_64; do
+            f="build/app/outputs/flutter-apk/app-$abi-release.apk"
+            [ -f "$f" ] && cp "$f" "dist/Choutify-$V-$abi.apk"
+          done
+          ls -la dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android
+          path: dist/*.apk
+
+  ios:
+    name: Build iOS (non signé)
+    needs: [version, test]
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter build ios --release --no-codesign --build-name=${{ needs.version.outputs.version }} --build-number=${{ github.run_number }}
+      - name: Création de l'IPA
+        run: |
+          V=${{ needs.version.outputs.version }}
+          mkdir -p dist/Payload
+          cp -R build/ios/iphoneos/Runner.app dist/Payload/
+          cd dist && zip -qry "Choutify-$V-ios-non-signe.ipa" Payload && rm -rf Payload
+          ls -la
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios
+          path: dist/*.ipa
+
+  release:
+    name: Publication
+    needs: [version, android, ios]
+    # L'iOS est optionnel : la release Android part même si le build iOS échoue.
+    if: always() && needs.android.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Notes de version
+        run: |
+          cat > notes.md <<'EOF'
+          ## Installer ou mettre à jour
+
+          **Android** : télécharge `Choutify-${{ needs.version.outputs.version }}-universal.apk` sur ton téléphone et ouvre-le (autorise l'installation depuis cette source si Android le demande). La nouvelle version s'installe par-dessus l'ancienne, ta bibliothèque et tes playlists sont conservées. L'application te prévient elle-même quand une nouvelle version est publiée.
+
+          **iOS** : l'IPA n'est pas signée. Installe-la avec un outil comme AltStore ou Sideloadly, qui la signe avec ton identifiant Apple.
+          EOF
+          ls -la dist
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.version.outputs.tag }}
+          name: Choutify ${{ needs.version.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          body_path: notes.md
+          generate_release_notes: true
+          make_latest: true
+          files: dist/*
