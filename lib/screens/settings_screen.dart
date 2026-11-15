@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../services/library_scanner.dart';
 import '../services/permissions.dart';
+import '../services/sync_service.dart';
 import '../services/update_service.dart';
 import '../state/library_state.dart';
 import '../state/player_state.dart';
@@ -189,6 +190,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               '${plural(lib.artists.length, 'artiste')} • '
               '${plural(lib.playlists.length, 'playlist')}'),
         ),
+        if (SyncService.supported) const _SyncSection(),
         const _Header('Application'),
         ListTile(
           leading: const Icon(Icons.system_update_rounded),
@@ -209,6 +211,67 @@ class _SettingsScreenState extends State<SettingsScreen> {
         const SizedBox(height: 32),
       ]),
     );
+  }
+}
+
+String _ago(DateTime d) {
+  final s = DateTime.now().difference(d).inSeconds;
+  if (s < 60) return 'à l\'instant';
+  if (s < 3600) return 'il y a ${s ~/ 60} min';
+  if (s < 86400) return 'il y a ${s ~/ 3600} h';
+  return 'le ${d.day}/${d.month}';
+}
+
+/// Synchronisation avec l'app iPhone via Google Drive (Windows).
+class _SyncSection extends StatelessWidget {
+  const _SyncSection();
+
+  @override
+  Widget build(BuildContext context) {
+    final sync = context.watch<SyncService>();
+    final lib = context.read<LibraryState>();
+    final folder = sync.folder;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      const _Header('Synchronisation avec l\'iPhone'),
+      if (folder == null) ...[
+        const ListTile(
+          leading: Icon(Icons.sync_disabled_rounded),
+          title: Text('Pas encore activée'),
+          subtitle: Text(
+              'Active la synchronisation dans Choutify sur l\'iPhone (Réglages › Google Drive) : '
+              'elle crée un dossier « Choutify-synchro » dans ton dossier de musique, que Choutify '
+              'trouvera ici tout seul. Ton dossier de musique doit être celui de Google Drive pour ordinateur.'),
+        ),
+        if (lib.musicFolders.isNotEmpty)
+          ListTile(
+            leading: const Icon(Icons.create_new_folder_outlined),
+            title: const Text('Créer le dossier de synchronisation ici'),
+            subtitle: Text(lib.musicFolders.first, maxLines: 2, overflow: TextOverflow.ellipsis),
+            onTap: () => sync.createFolder(),
+          ),
+      ] else ...[
+        ListTile(
+          leading: const Icon(Icons.sync_rounded, color: AppColors.violet),
+          title: Text(sync.running
+              ? 'Synchronisation…'
+              : sync.last == null
+                  ? 'Jamais synchronisé'
+                  : 'Synchronisé ${_ago(sync.last!)}'),
+          subtitle: Text(sync.error ?? folder.path, maxLines: 3, overflow: TextOverflow.ellipsis),
+          trailing: IconButton(
+            tooltip: 'Synchroniser maintenant',
+            icon: const Icon(Icons.refresh_rounded),
+            onPressed: sync.running ? null : () => sync.syncNow(),
+          ),
+        ),
+        for (final d in sync.devices)
+          ListTile(
+            leading: const Icon(Icons.phone_iphone_rounded),
+            title: Text(d.name),
+            subtitle: Text('Dernière synchronisation ${_ago(d.updated)}'),
+          ),
+      ],
+    ]);
   }
 }
 

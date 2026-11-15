@@ -16,6 +16,7 @@ Lecteur de musique **local** pour Android, iOS et Windows : tu pointes l'applica
 - **Accueil** : écoutés récemment, ajoutés récemment, titres les plus écoutés, artistes favoris, albums à redécouvrir, lecture aléatoire de toute la bibliothèque.
 - **Minuterie de mise en veille**.
 - Reprise de la lecture là où tu t'étais arrêté.
+- **Synchronisation** (Windows ↔ app web iPhone) des playlists, titres aimés et statistiques d'écoute via Google Drive : voir [`web/README.md`](web/README.md#synchroniser-avec-lapp-windows).
 - **Mises à jour** : l'application vérifie les GitHub Releases et propose de télécharger la nouvelle version.
 
 ## Version web pour iPhone (Google Drive)
@@ -75,6 +76,7 @@ Structure :
 
 - `lib/services/tag_reader.dart` : lecture des tags et de la durée (sans dépendance native).
 - `lib/services/library_scanner.dart` : analyse incrémentale des dossiers dans un isolate.
+- `lib/services/sync_core.dart` et `sync_service.dart` : synchronisation avec l'app web via le dossier `Choutify-synchro` (même format et même fusion que `web/src/lib/synccore.ts`, vérifié par `test/fixtures/sync_scenario.json`).
 - `lib/state/` : état de la bibliothèque (playlists, favoris, statistiques) et du lecteur (`just_audio` + `just_audio_background`).
 - `lib/screens/` : écrans de l'application.
 - `windows/` : application Windows (fenêtre, icône) et `windows/installer/choutify.iss`, le script Inno Setup de l'installateur. Sur Windows, la lecture passe par `just_audio_windows` (lecteur multimédia de Windows) ; `just_audio_background` n'est utilisé que sur Android et iOS.

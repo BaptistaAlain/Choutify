@@ -4,6 +4,7 @@ import { AuthError, handleRedirect, isConnected } from './lib/google';
 import * as db from './lib/db';
 import { lib, loadLibrary, scanDrive } from './lib/library';
 import { restorePlayer } from './lib/player';
+import { startSync } from './lib/sync';
 import { toast, ui } from './lib/ui';
 import './styles.css';
 
@@ -25,6 +26,7 @@ async function boot() {
     return;
   }
   await restorePlayer().catch(() => {});
+  startSync().catch(() => {});
 
   // Actualise la bibliothèque Google Drive en arrière-plan (au plus 1 fois / 30 min).
   const { sources } = lib.get();

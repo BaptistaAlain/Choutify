@@ -59,10 +59,22 @@ Google demande que chaque application qui lit un Drive ait son propre « identif
 
 1. Ouvre Choutify sur l'iPhone, touche l'engrenage (Réglages).
 2. Colle l'**ID client** et le **Code secret du client**, puis **Enregistrer et se connecter**.
-3. Choisis ton compte Google. Si Google affiche « Google n'a pas validé cette application », touche **Paramètres avancés** puis **Accéder à Choutify** : c'est ton application, elle ne peut que lire ton Drive.
+3. Choisis ton compte Google. Si Google affiche « Google n'a pas validé cette application », touche **Paramètres avancés** puis **Accéder à Choutify** : c'est ton application : elle lit ta musique et n'écrit que dans son dossier « Choutify-synchro ».
 4. Autorise l'accès, puis **Ajouter un dossier** et choisis le dossier où se trouve ta musique.
 
 L'identifiant et le code secret restent sur ton iPhone : ils ne sont pas publiés dans le dépôt GitHub. Si tu préfères ne pas recopier l'ID client, tu peux le définir une fois pour toutes dans *Settings › Secrets and variables › Actions › Variables* du dépôt, sous le nom `GOOGLE_CLIENT_ID` (le code secret, lui, se saisit toujours dans l'app).
+
+## Synchroniser avec l'app Windows
+
+Les playlists, les titres aimés et les statistiques d'écoute (titres les plus écoutés, écoutés récemment) peuvent être partagés entre Choutify sur l'iPhone et Choutify sur ton PC Windows. Les réglages propres à chaque appareil (dossiers, cache) restent séparés.
+
+**Sur l'iPhone** : Réglages › Google Drive › **Activer la synchronisation**. Google redemande l'autorisation, cette fois pour lire *et écrire* dans ton Drive (même avertissement « Google n'a pas validé cette application » que la première fois : **Paramètres avancés** › **Accéder à Choutify**). Choutify crée alors un dossier `Choutify-synchro` dans ton dossier de musique et y dépose un petit fichier. Il n'écrit nulle part ailleurs.
+
+**Sur le PC** : ajoute dans Choutify le *même* dossier de musique, via Google Drive pour ordinateur (par exemple `G:\Mon Drive\Musique`). Choutify trouve le dossier `Choutify-synchro` tout seul (Paramètres › Synchronisation avec l'iPhone) et y dépose son propre fichier.
+
+Ensuite, tout se fait automatiquement : à l'ouverture de l'app, quelques secondes après chaque modification, et toutes les quelques minutes. Il faut compter jusqu'à une minute environ pour que Google Drive pour ordinateur transmette les changements dans un sens ou dans l'autre.
+
+Comment ça marche : chaque appareil écrit son propre fichier et lit celui des autres, et chaque playlist, titre ajouté ou retiré, favori et compteur d'écoutes y porte sa date de modification. Les modifications faites des deux côtés, même hors ligne, sont donc fusionnées sans perte : une playlist modifiée sur les deux appareils garde les ajouts de chacun. Les titres sont reconnus par leur chemin dans le dossier de musique : **un fichier déplacé ou renommé** dans le Drive sort des playlists où il était (comme avant). Les fichiers importés sur l'iPhone (hors Drive) restent dans les playlists de l'iPhone mais ne sont pas synchronisés.
 
 ## Limites sur iPhone
 

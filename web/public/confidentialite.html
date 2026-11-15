@@ -23,18 +23,19 @@
   <p>Choutify est un lecteur de musique personnel qui fonctionne entièrement dans le navigateur de l'utilisateur. Il permet d'écouter des fichiers audio stockés dans son propre Google Drive ou importés depuis son appareil. Choutify n'a pas de serveur : aucune donnée n'est envoyée à l'éditeur de l'application ni à un tiers.</p>
 
   <h2>Données Google auxquelles Choutify accède</h2>
-  <p>Avec l'accord explicite de l'utilisateur, Choutify demande l'autorisation Google Drive en <strong>lecture seule</strong> (<code>drive.readonly</code>). Elle sert uniquement à :</p>
+  <p>Avec l'accord explicite de l'utilisateur, Choutify demande l'autorisation d'accès à Google Drive (<code>drive</code>). Elle sert uniquement à :</p>
   <ul>
     <li>afficher la liste des dossiers du Drive pour que l'utilisateur choisisse celui qui contient sa musique ;</li>
     <li>lister les fichiers audio et les images de pochette de ce dossier et de ses sous-dossiers ;</li>
     <li>lire le début des fichiers audio pour en extraire le titre, l'artiste, l'album et la pochette ;</li>
     <li>télécharger les fichiers audio pour les lire ;</li>
-    <li>afficher le nom et l'adresse e-mail du compte connecté dans les réglages.</li>
+    <li>afficher le nom et l'adresse e-mail du compte connecté dans les réglages ;</li>
+    <li>synchroniser les playlists, titres aimés et statistiques d'écoute entre les appareils de l'utilisateur : Choutify crée un dossier « Choutify-synchro » dans son dossier de musique et y écrit un petit fichier par appareil.</li>
   </ul>
-  <p>Choutify ne modifie, ne supprime, ne partage et n'envoie jamais de fichiers du Drive.</p>
+  <p>En dehors de ses propres fichiers dans « Choutify-synchro », Choutify ne modifie, ne supprime, ne partage et n'envoie jamais de fichiers du Drive.</p>
 
   <h2>Où sont stockées les données</h2>
-  <p>Toutes les données restent sur l'appareil de l'utilisateur, dans le stockage du navigateur : jetons de connexion Google, bibliothèque (titres, artistes, albums), pochettes réduites, playlists, titres aimés, statistiques d'écoute et fichiers audio mis en cache pour l'écoute hors ligne. Les échanges ont lieu directement entre l'appareil et les serveurs de Google, en HTTPS.</p>
+  <p>Toutes les données restent sur l'appareil de l'utilisateur, dans le stockage du navigateur, ou dans son propre Google Drive pour les fichiers de synchronisation : jetons de connexion Google, bibliothèque (titres, artistes, albums), pochettes réduites, playlists, titres aimés, statistiques d'écoute et fichiers audio mis en cache pour l'écoute hors ligne. Les échanges ont lieu directement entre l'appareil et les serveurs de Google, en HTTPS.</p>
 
   <h2>Partage des données</h2>
   <p>Choutify ne vend, ne transfère et ne partage aucune donnée utilisateur. Aucune donnée n'est utilisée à des fins publicitaires, d'analyse ou d'entraînement de modèles d'intelligence artificielle. Choutify n'utilise ni cookies de suivi ni outil de mesure d'audience.</p>

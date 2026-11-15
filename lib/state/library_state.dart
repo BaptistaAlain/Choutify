@@ -57,6 +57,11 @@ class LibraryState extends ChangeNotifier {
   Map<String, int> playCounts = {};
   Map<String, int> lastPlayed = {};
 
+  /// Appelé après chaque modification des playlists, favoris ou écoutes
+  /// (synchronisation), et à la fin de chaque analyse.
+  VoidCallback? onUserDataChanged;
+  VoidCallback? onScanned;
+
   bool loaded = false;
   bool scanning = false;
   ScanProgress? progress;
@@ -166,6 +171,7 @@ class LibraryState extends ChangeNotifier {
 
   Timer? _saveUserTimer;
   void _saveUserSoon() {
+    onUserDataChanged?.call();
     _saveUserTimer?.cancel();
     _saveUserTimer = Timer(const Duration(milliseconds: 600), _saveUser);
   }
@@ -222,6 +228,7 @@ class LibraryState extends ChangeNotifier {
       }
       _setTracks(result);
       await _saveLibrary();
+      onScanned?.call();
     } catch (e) {
       lastError = '$e';
     } finally {
@@ -482,6 +489,23 @@ class LibraryState extends ChangeNotifier {
     pl.updatedAt = DateTime.now().millisecondsSinceEpoch;
     _saveUserSoon();
     notifyListeners();
+  }
+
+  /// Remplace les playlists, favoris et écoutes par ceux issus de la
+  /// synchronisation, sans relancer de synchronisation.
+  Future<void> applySync({
+    required List<Playlist> playlists,
+    required Set<String> favorites,
+    required Map<String, int> playCounts,
+    required Map<String, int> lastPlayed,
+  }) async {
+    this.playlists = playlists;
+    this.favorites = favorites;
+    this.playCounts = playCounts;
+    this.lastPlayed = lastPlayed;
+    notifyListeners();
+    _saveUserTimer?.cancel();
+    await _saveUser();
   }
 
   void movePlaylistItem(Playlist pl, int from, int to) {

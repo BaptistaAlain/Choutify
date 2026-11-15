@@ -5,6 +5,7 @@ import { cacheState, cacheUsage, clearCache } from './lib/audiocache';
 import * as g from './lib/google';
 import { addSource, deleteTracks, importFiles, lib, removeSource, resetLibrary, saveSettings, scanDrive } from './lib/library';
 import { useObs } from './lib/store';
+import { syncNow, syncState } from './lib/sync';
 import { confirmDialog, formatBytes, plural, toast } from './lib/ui';
 import { navigate } from './router';
 
@@ -142,6 +143,7 @@ export function Settings() {
                 </button>
               )}
             </div>
+            {sources.length > 0 && <SyncSection />}
             <p class="muted small">
               {plural(driveCount, 'titre', 'titres')} depuis Google Drive. Choutify actualise la bibliothèque à chaque ouverture et ne lit que le
               début de chaque fichier pour les titres et pochettes.
@@ -280,6 +282,63 @@ export function Settings() {
           Réinitialiser la bibliothèque
         </button>
       </section>
+    </div>
+  );
+}
+
+function ago(ms: number) {
+  const s = Math.round((Date.now() - ms) / 1000);
+  if (s < 60) return 'à l’instant';
+  if (s < 3600) return `il y a ${Math.round(s / 60)} min`;
+  if (s < 86400) return `il y a ${Math.round(s / 3600)} h`;
+  return new Date(ms).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+}
+
+function SyncSection() {
+  const st = useObs(syncState, (s) => s);
+  if (!g.canWrite()) {
+    return (
+      <div class="sync-box">
+        <h3>Synchronisation avec ton PC</h3>
+        <p class="muted">
+          Retrouve tes playlists, titres aimés et écoutes sur l’app Windows (et inversement). Choutify a besoin d’écrire un petit fichier dans un
+          dossier « Choutify-synchro » de ton Drive : Google va te redemander l’autorisation.
+        </p>
+        <button class="btn primary" onClick={() => g.startLogin('#/settings').catch((e) => toast(e.message))}>
+          <Icon name="refresh" /> Activer la synchronisation
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div class="sync-box">
+      <h3>Synchronisation avec ton PC</h3>
+      <div class="kv">
+        <span>Dernière synchronisation</span>
+        <b>{st.running ? 'en cours…' : st.last ? ago(st.last) : 'jamais'}</b>
+      </div>
+      {st.devices
+        .filter((d) => !d.self)
+        .map((d) => (
+          <div class="kv" key={d.name + d.updated}>
+            <span>{d.name}</span>
+            <b>{ago(d.updated)}</b>
+          </div>
+        ))}
+      {st.folder && <p class="muted small">Dossier : {st.folder}</p>}
+      {st.error && <p class="error small">{st.error}</p>}
+      <button
+        class="btn"
+        disabled={st.running}
+        onClick={() =>
+          syncNow().then(
+            () => toast('Synchronisé'),
+            (e) => toast(e.message),
+          )
+        }
+      >
+        <Icon name="refresh" /> Synchroniser maintenant
+      </button>
     </div>
   );
 }
