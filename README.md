@@ -18,6 +18,12 @@ Lecteur de musique **local** pour Android et iOS : tu pointes l'application vers
 - Reprise de la lecture là où tu t'étais arrêté.
 - **Mises à jour** : l'application vérifie les GitHub Releases et propose de télécharger la nouvelle version.
 
+## Version web pour iPhone (Google Drive)
+
+Une version web, installable depuis Safari sur l'écran d'accueil, lit la musique directement depuis un dossier **Google Drive** sans la stocker sur le téléphone. Elle ne nécessite ni compte Apple Developer ni AltStore et se met à jour toute seule : **https://baptistaalain.github.io/Choutify/**
+
+Installation, connexion à Google Drive et limites : voir [`web/README.md`](web/README.md).
+
 ## Installation
 
 Télécharge la dernière version dans les [Releases](https://github.com/BaptistaAlain/Choutify/releases/latest).
