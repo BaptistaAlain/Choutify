@@ -65,8 +65,8 @@ class _AppShellState extends State<AppShell> {
           await SystemNavigator.pop();
         }
       },
-      child: Scaffold(
-        body: IndexedStack(
+      child: LayoutBuilder(builder: (context, box) {
+        final stack = IndexedStack(
           index: tab,
           children: [
             for (var i = 0; i < _roots.length; i++)
@@ -75,28 +75,73 @@ class _AppShellState extends State<AppShell> {
                 onGenerateRoute: (_) => MaterialPageRoute(builder: (_) => _roots[i]),
               ),
           ],
-        ),
-        bottomNavigationBar: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const MiniPlayer(),
-            NavigationBar(
-              selectedIndex: tab,
-              onDestinationSelected: _select,
-              destinations: const [
-                NavigationDestination(
-                    icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home_rounded), label: 'Accueil'),
-                NavigationDestination(
-                    icon: Icon(Icons.search_rounded), selectedIcon: Icon(Icons.manage_search_rounded), label: 'Rechercher'),
-                NavigationDestination(
-                    icon: Icon(Icons.library_music_outlined),
-                    selectedIcon: Icon(Icons.library_music_rounded),
-                    label: 'Bibliothèque'),
-              ],
+        );
+        // Grande fenêtre sur PC : menu à gauche plutôt qu'en bas.
+        if (Platform.isWindows && box.maxWidth >= 840) {
+          return Scaffold(
+            body: Row(children: [
+              NavigationRail(
+                selectedIndex: tab,
+                onDestinationSelected: _select,
+                labelType: NavigationRailLabelType.all,
+                backgroundColor: AppColors.bg,
+                leading: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      gradient: AppColors.brandGradient,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.graphic_eq_rounded, color: Colors.white),
+                  ),
+                ),
+                destinations: const [
+                  NavigationRailDestination(
+                      icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home_rounded), label: Text('Accueil')),
+                  NavigationRailDestination(
+                      icon: Icon(Icons.search_rounded),
+                      selectedIcon: Icon(Icons.manage_search_rounded),
+                      label: Text('Rechercher')),
+                  NavigationRailDestination(
+                      icon: Icon(Icons.library_music_outlined),
+                      selectedIcon: Icon(Icons.library_music_rounded),
+                      label: Text('Bibliothèque')),
+                ],
+              ),
+              Expanded(child: stack),
+            ]),
+            bottomNavigationBar: const Padding(
+              padding: EdgeInsets.symmetric(vertical: 4),
+              child: MiniPlayer(),
             ),
-          ],
-        ),
-      ),
+          );
+        }
+        return Scaffold(
+          body: stack,
+          bottomNavigationBar: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const MiniPlayer(),
+              NavigationBar(
+                selectedIndex: tab,
+                onDestinationSelected: _select,
+                destinations: const [
+                  NavigationDestination(
+                      icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home_rounded), label: 'Accueil'),
+                  NavigationDestination(
+                      icon: Icon(Icons.search_rounded), selectedIcon: Icon(Icons.manage_search_rounded), label: 'Rechercher'),
+                  NavigationDestination(
+                      icon: Icon(Icons.library_music_outlined),
+                      selectedIcon: Icon(Icons.library_music_rounded),
+                      label: 'Bibliothèque'),
+                ],
+              ),
+            ],
+          ),
+        );
+      }),
     );
   }
 }
@@ -135,7 +180,9 @@ class OnboardingScreen extends StatelessWidget {
               const Text('Choutify',
                   style: TextStyle(fontSize: 40, fontWeight: FontWeight.w900, letterSpacing: -1)),
               const SizedBox(height: 8),
-              const Text('Toute ta musique, sur ton téléphone.\nSans compte, sans abonnement, sans internet.',
+              Text(
+                  'Toute ta musique, sur ${Platform.isWindows ? 'ton PC' : 'ton téléphone'}.\n'
+                  'Sans compte, sans abonnement, sans internet.',
                   style: TextStyle(fontSize: 17, color: Colors.white70, height: 1.4)),
               const Spacer(),
               if (lib.scanning) ScanBanner(lib: lib),
@@ -153,6 +200,24 @@ class OnboardingScreen extends StatelessWidget {
                   onPressed: lib.scanning ? null : () => pickMusicFolder(context),
                 ),
               ),
+              if (Platform.isWindows && windowsMusicDir() != null) ...[
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(foregroundColor: Colors.white),
+                    icon: const Icon(Icons.library_music_rounded),
+                    label: const Text('Utiliser mon dossier « Musique »'),
+                    onPressed: lib.scanning
+                        ? null
+                        : () async {
+                            await lib.addFolder(windowsMusicDir()!);
+                            await lib.rescan();
+                          },
+                  ),
+                ),
+              ],
               if (Platform.isIOS) ...[
                 const SizedBox(height: 14),
                 const Text(

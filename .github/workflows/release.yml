@@ -130,10 +130,56 @@ jobs:
           name: ios
           path: dist/*.ipa
 
+  windows:
+    name: Build Windows
+    needs: [version, test]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter build windows --release --build-name=${{ needs.version.outputs.version }} --build-number=${{ github.run_number }}
+      - name: Bibliothèques Visual C++
+        # Copiées à côté de l'exécutable pour que Choutify démarre même sur un
+        # PC où le « Redistribuable Visual C++ » n'est pas installé.
+        shell: pwsh
+        run: |
+          $out = "build\windows\x64\runner\Release"
+          foreach ($dll in "msvcp140.dll", "msvcp140_1.dll", "vcruntime140.dll", "vcruntime140_1.dll") {
+            Copy-Item "$env:SystemRoot\System32\$dll" $out
+          }
+          Get-ChildItem $out
+      - name: Installateur (Inno Setup)
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            choco install innosetup -y --no-progress
+          }
+          $v = "${{ needs.version.outputs.version }}"
+          $build = (Resolve-Path "build\windows\x64\runner\Release").Path
+          New-Item -ItemType Directory -Force dist | Out-Null
+          $dist = (Resolve-Path dist).Path
+          & $iscc "/DAppVersion=$v" "/DBuildDir=$build" "/DOutputDir=$dist" windows\installer\choutify.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Compress-Archive -Path "$build\*" -DestinationPath "$dist\Choutify-$v-windows-portable.zip"
+          Get-ChildItem dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: |
+            dist/*.exe
+            dist/*.zip
+
   release:
     name: Publication
-    needs: [version, android, ios]
-    # L'iOS est optionnel : la release Android part même si le build iOS échoue.
+    needs: [version, android, ios, windows]
+    # iOS et Windows sont optionnels : la release Android part même si l'un
+    # de ces deux builds échoue.
     if: always() && needs.android.result == 'success'
     runs-on: ubuntu-latest
     steps:
@@ -149,6 +195,8 @@ jobs:
           **Android** : télécharge `Choutify-${{ needs.version.outputs.version }}-universal.apk` sur ton téléphone et ouvre-le (autorise l'installation depuis cette source si Android le demande). La nouvelle version s'installe par-dessus l'ancienne, ta bibliothèque et tes playlists sont conservées. L'application te prévient elle-même quand une nouvelle version est publiée.
 
           **iOS** : l'IPA n'est pas signée. Installe-la avec un outil comme AltStore ou Sideloadly, qui la signe avec ton identifiant Apple.
+
+          **Windows** : télécharge `Choutify-${{ needs.version.outputs.version }}-windows-setup.exe` et lance-le (pas besoin des droits administrateur). L'installateur n'est pas signé : si Windows affiche « Windows a protégé votre ordinateur », clique sur « Informations complémentaires » puis « Exécuter quand même ». Les versions suivantes s'installent ensuite en un clic depuis l'app. Le fichier `windows-portable.zip` est une version sans installation.
           EOF
           ls -la dist
       - uses: softprops/action-gh-release@v2

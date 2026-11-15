@@ -85,111 +85,117 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
               ),
             ),
             child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 28),
-                child: Column(children: [
-                  Row(children: [
-                    IconButton(
-                      icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 32),
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                    Expanded(
-                      child: Column(children: [
-                        const Text('EN LECTURE',
-                            style: TextStyle(fontSize: 11, letterSpacing: 1.4, color: Colors.white70)),
-                        Text(player.queueLabel ?? t.album ?? '',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                      ]),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.more_vert_rounded),
-                      onPressed: () => showTrackMenu(context, t),
-                    ),
-                  ]),
-                  const Spacer(),
-                  GestureDetector(
-                    onHorizontalDragEnd: (d) {
-                      final v = d.velocity.pixelsPerSecond.dx;
-                      if (v < -300) player.next();
-                      if (v > 300) player.previous();
-                    },
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 250),
-                      child: DecoratedBox(
-                        key: ValueKey(t.id),
-                        decoration: BoxDecoration(boxShadow: [
-                          BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.5),
-                              blurRadius: 40,
-                              offset: const Offset(0, 18)),
-                        ]),
-                        child: Artwork(
-                            path: t.artPath, size: artSize, radius: 14, seed: t.album ?? t.title),
-                      ),
-                    ),
-                  ),
-                  const Spacer(),
-                  Row(children: [
-                    Expanded(
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(t.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
-                        const SizedBox(height: 2),
-                        GestureDetector(
-                          onTap: () {
-                            final a = lib.artistByName(t.mainArtist);
-                            if (a != null) AppNav.openArtist(a);
-                          },
-                          child: Text(t.displayArtist,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 15, color: Colors.white70)),
+              // Sur grand écran, les commandes restent groupées au centre.
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 620),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 28),
+                    child: Column(children: [
+                      Row(children: [
+                        IconButton(
+                          icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 32),
+                          onPressed: () => Navigator.of(context).pop(),
+                        ),
+                        Expanded(
+                          child: Column(children: [
+                            const Text('EN LECTURE',
+                                style: TextStyle(fontSize: 11, letterSpacing: 1.4, color: Colors.white70)),
+                            Text(player.queueLabel ?? t.album ?? '',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                          ]),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.more_vert_rounded),
+                          onPressed: () => showTrackMenu(context, t),
                         ),
                       ]),
-                    ),
-                    IconButton(
-                      iconSize: 28,
-                      icon: Icon(
-                        lib.isFavorite(t) ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                        color: lib.isFavorite(t) ? AppColors.coral : Colors.white,
+                      const Spacer(),
+                      GestureDetector(
+                        onHorizontalDragEnd: (d) {
+                          final v = d.velocity.pixelsPerSecond.dx;
+                          if (v < -300) player.next();
+                          if (v > 300) player.previous();
+                        },
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 250),
+                          child: DecoratedBox(
+                            key: ValueKey(t.id),
+                            decoration: BoxDecoration(boxShadow: [
+                              BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.5),
+                                  blurRadius: 40,
+                                  offset: const Offset(0, 18)),
+                            ]),
+                            child: Artwork(
+                                path: t.artPath, size: artSize, radius: 14, seed: t.album ?? t.title),
+                          ),
+                        ),
                       ),
-                      onPressed: () => lib.toggleFavorite(t),
-                    ),
-                  ]),
-                  const SizedBox(height: 8),
-                  const SeekBar(),
-                  const SizedBox(height: 4),
-                  const _Controls(),
-                  const SizedBox(height: 12),
-                  Row(children: [
-                    IconButton(
-                      tooltip: 'Minuterie de mise en veille',
-                      icon: Icon(Icons.bedtime_outlined,
-                          color: player.sleepTimerActive ? AppColors.coral : Colors.white70),
-                      onPressed: () => showSleepTimer(context),
-                    ),
-                    if (player.sleepAt != null) _SleepCountdown(at: player.sleepAt!),
-                    if (player.sleepAtEndOfTrack)
-                      const Text('Fin du titre', style: TextStyle(color: AppColors.coral, fontSize: 12)),
-                    const Spacer(),
-                    IconButton(
-                      tooltip: 'Ajouter à une playlist',
-                      icon: const Icon(Icons.playlist_add_rounded, color: Colors.white70),
-                      onPressed: () => showAddToPlaylist(context, [t]),
-                    ),
-                    IconButton(
-                      tooltip: 'File d\'attente',
-                      icon: const Icon(Icons.queue_music_rounded, color: Colors.white70),
-                      onPressed: () => Navigator.of(context)
-                          .push(MaterialPageRoute(builder: (_) => const QueueScreen())),
-                    ),
-                  ]),
-                  const SizedBox(height: 8),
-                ]),
+                      const Spacer(),
+                      Row(children: [
+                        Expanded(
+                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Text(t.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+                            const SizedBox(height: 2),
+                            GestureDetector(
+                              onTap: () {
+                                final a = lib.artistByName(t.mainArtist);
+                                if (a != null) AppNav.openArtist(a);
+                              },
+                              child: Text(t.displayArtist,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 15, color: Colors.white70)),
+                            ),
+                          ]),
+                        ),
+                        IconButton(
+                          iconSize: 28,
+                          icon: Icon(
+                            lib.isFavorite(t) ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                            color: lib.isFavorite(t) ? AppColors.coral : Colors.white,
+                          ),
+                          onPressed: () => lib.toggleFavorite(t),
+                        ),
+                      ]),
+                      const SizedBox(height: 8),
+                      const SeekBar(),
+                      const SizedBox(height: 4),
+                      const _Controls(),
+                      const SizedBox(height: 12),
+                      Row(children: [
+                        IconButton(
+                          tooltip: 'Minuterie de mise en veille',
+                          icon: Icon(Icons.bedtime_outlined,
+                              color: player.sleepTimerActive ? AppColors.coral : Colors.white70),
+                          onPressed: () => showSleepTimer(context),
+                        ),
+                        if (player.sleepAt != null) _SleepCountdown(at: player.sleepAt!),
+                        if (player.sleepAtEndOfTrack)
+                          const Text('Fin du titre', style: TextStyle(color: AppColors.coral, fontSize: 12)),
+                        const Spacer(),
+                        IconButton(
+                          tooltip: 'Ajouter à une playlist',
+                          icon: const Icon(Icons.playlist_add_rounded, color: Colors.white70),
+                          onPressed: () => showAddToPlaylist(context, [t]),
+                        ),
+                        IconButton(
+                          tooltip: 'File d\'attente',
+                          icon: const Icon(Icons.queue_music_rounded, color: Colors.white70),
+                          onPressed: () => Navigator.of(context)
+                              .push(MaterialPageRoute(builder: (_) => const QueueScreen())),
+                        ),
+                      ]),
+                      const SizedBox(height: 8),
+                    ]),
+                  ),
+                ),
               ),
             ),
           ),

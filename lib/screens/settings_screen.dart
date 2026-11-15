@@ -10,6 +10,7 @@ import '../services/library_scanner.dart';
 import '../services/permissions.dart';
 import '../services/update_service.dart';
 import '../state/library_state.dart';
+import '../state/player_state.dart';
 import '../theme.dart';
 import '../widgets/track_widgets.dart';
 import 'home_screen.dart';
@@ -59,6 +60,14 @@ Future<void> _importIntoApp(BuildContext context, String source) async {
           'Import impossible. Copie ta musique dans Fichiers › Sur mon iPhone › Choutify › Musique.');
     }
   }
+}
+
+/// Dossier « Musique » de l'utilisateur Windows, s'il existe.
+String? windowsMusicDir() {
+  final home = Platform.environment['USERPROFILE'];
+  if (home == null) return null;
+  final dir = p.join(home, 'Music');
+  return Directory(dir).existsSync() ? dir : null;
 }
 
 class SettingsScreen extends StatefulWidget {
@@ -125,6 +134,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 icon: const Icon(Icons.close_rounded),
                 onPressed: () => lib.removeFolder(f),
               ),
+            ),
+          if (Platform.isWindows)
+            const ListTile(
+              leading: Icon(Icons.cloud_outlined),
+              title: Text('Ta musique est sur Google Drive ?'),
+              subtitle: Text(
+                  'Installe « Google Drive pour ordinateur » (gratuit), rends ton dossier de musique '
+                  'disponible hors connexion, puis ajoute-le ici (par exemple G:\\Mon Drive\\Musique).'),
             ),
           ListTile(
             leading: const Icon(Icons.create_new_folder_rounded),
@@ -208,6 +225,15 @@ class _Header extends StatelessWidget {
 }
 
 void showUpdateDialog(BuildContext context, UpdateInfo info) {
+  if (Platform.isWindows && info.downloadUrl != null) {
+    showDialog(
+      context: context,
+      useRootNavigator: true,
+      barrierDismissible: false,
+      builder: (_) => _WindowsUpdateDialog(info: info),
+    );
+    return;
+  }
   showDialog(
     context: context,
     useRootNavigator: true,
@@ -229,4 +255,74 @@ void showUpdateDialog(BuildContext context, UpdateInfo info) {
       ],
     ),
   );
+}
+
+/// Mise à jour en un clic sur Windows : téléchargement puis installation.
+class _WindowsUpdateDialog extends StatefulWidget {
+  const _WindowsUpdateDialog({required this.info});
+  final UpdateInfo info;
+
+  @override
+  State<_WindowsUpdateDialog> createState() => _WindowsUpdateDialogState();
+}
+
+class _WindowsUpdateDialogState extends State<_WindowsUpdateDialog> {
+  double? _progress;
+  bool _busy = false;
+  String? _error;
+
+  Future<void> _install() async {
+    setState(() {
+      _busy = true;
+      _error = null;
+      _progress = null;
+    });
+    try {
+      context.read<PlayerState>().persist();
+      await UpdateService.installWindowsUpdate(widget.info.downloadUrl!,
+          (p) => mounted ? setState(() => _progress = p) : null);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _error = 'La mise à jour n\'a pas pu être téléchargée. '
+              'Tu peux la récupérer depuis la page des versions.';
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final info = widget.info;
+    return AlertDialog(
+      title: Text('Version ${info.version} disponible'),
+      content: SingleChildScrollView(
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          if (_busy) ...[
+            const Text('Téléchargement de la mise à jour… Choutify va se fermer puis se rouvrir tout seul.'),
+            const SizedBox(height: 16),
+            LinearProgressIndicator(value: _progress),
+          ] else ...[
+            Text(info.notes.isEmpty ? 'Une nouvelle version de Choutify est disponible.' : info.notes),
+            if (_error != null) ...[
+              const SizedBox(height: 12),
+              Text(_error!, style: const TextStyle(color: AppColors.coral)),
+            ],
+          ],
+        ]),
+      ),
+      actions: _busy
+          ? const []
+          : [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Plus tard')),
+              if (_error != null)
+                TextButton(
+                  onPressed: () => launchUrl(Uri.parse(info.pageUrl), mode: LaunchMode.externalApplication),
+                  child: const Text('Voir la page'),
+                ),
+              FilledButton(onPressed: _install, child: const Text('Installer maintenant')),
+            ],
+    );
+  }
 }

@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'package:material_ui/material_ui.dart';
@@ -16,13 +17,17 @@ import 'theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await JustAudioBackground.init(
-    androidNotificationChannelId: 'com.choutify.app.playback',
-    androidNotificationChannelName: 'Lecture',
-    androidNotificationOngoing: true,
-    notificationColor: AppColors.violet,
-    androidNotificationIcon: 'drawable/ic_notification',
-  );
+  // Sur Windows, le lecteur natif (just_audio_windows) gère déjà les touches
+  // multimédia du clavier : la lecture en arrière-plan mobile n'existe pas.
+  if (Platform.isAndroid || Platform.isIOS) {
+    await JustAudioBackground.init(
+      androidNotificationChannelId: 'com.choutify.app.playback',
+      androidNotificationChannelName: 'Lecture',
+      androidNotificationOngoing: true,
+      notificationColor: AppColors.violet,
+      androidNotificationIcon: 'drawable/ic_notification',
+    );
+  }
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     systemNavigationBarColor: AppColors.bg,
@@ -85,6 +90,10 @@ class _ChoutifyAppState extends State<ChoutifyApp> with WidgetsBindingObserver {
       child: MaterialApp(
         title: 'Choutify',
         debugShowCheckedModeBanner: false,
+        // Sur PC, les listes horizontales se font aussi glisser à la souris.
+        scrollBehavior: Platform.isWindows
+            ? const MaterialScrollBehavior().copyWith(dragDevices: PointerDeviceKind.values.toSet())
+            : null,
         navigatorKey: AppNav.rootKey,
         theme: buildTheme(),
         darkTheme: buildTheme(),
