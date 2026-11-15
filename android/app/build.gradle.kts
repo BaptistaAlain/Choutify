@@ -8,7 +8,8 @@ plugins {
 
 android {
     namespace = "com.choutify.choutify"
-    compileSdk = flutter.compileSdkVersion
+    // permission_handler_android exige la compilation contre l'API 37.
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
