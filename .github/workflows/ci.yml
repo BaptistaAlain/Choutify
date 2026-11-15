@@ -66,3 +66,49 @@ jobs:
           cache: true
       - run: flutter pub get
       - run: flutter build ios --release --no-codesign
+
+  windows:
+    name: Build Windows
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter build windows --release --build-number=${{ github.run_number }}
+      - name: Bibliothèques Visual C++
+        # Copiées à côté de l'exécutable pour que Choutify démarre même sur un
+        # PC où le « Redistribuable Visual C++ » n'est pas installé.
+        shell: pwsh
+        run: |
+          $out = "build\windows\x64\runner\Release"
+          foreach ($dll in "msvcp140.dll", "msvcp140_1.dll", "vcruntime140.dll", "vcruntime140_1.dll") {
+            Copy-Item "$env:SystemRoot\System32\$dll" $out
+          }
+          Get-ChildItem $out
+      - name: Installateur (Inno Setup)
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            choco install innosetup -y --no-progress
+          }
+          $v = (Select-String -Path pubspec.yaml -Pattern '^version:\s*([^+\s]+)').Matches[0].Groups[1].Value
+          $build = (Resolve-Path "build\windows\x64\runner\Release").Path
+          New-Item -ItemType Directory -Force dist | Out-Null
+          $dist = (Resolve-Path dist).Path
+          & $iscc "/DAppVersion=$v" "/DBuildDir=$build" "/DOutputDir=$dist" windows\installer\choutify.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Compress-Archive -Path "$build\*" -DestinationPath "$dist\Choutify-$v-windows-portable.zip"
+          Get-ChildItem dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: choutify-windows-test
+          path: |
+            dist/*.exe
+            dist/*.zip
+          retention-days: 14

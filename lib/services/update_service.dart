@@ -52,6 +52,7 @@ class UpdateService {
       if (compareVersions(tag, current) <= 0) return null;
       String? apk;
       String? ipa;
+      String? exe;
       for (final a in (j['assets'] as List? ?? [])) {
         final name = (a['name'] as String).toLowerCase();
         final url = a['browser_download_url'] as String;
@@ -59,15 +60,51 @@ class UpdateService {
           apk = url;
         }
         if (name.endsWith('.ipa')) ipa = url;
+        if (name.endsWith('.exe') && name.contains('setup')) exe = url;
       }
       return UpdateInfo(
         tag.replaceFirst(RegExp(r'^v'), ''),
         (j['body'] as String?) ?? '',
         (j['html_url'] as String?) ?? releasesUrl,
-        Platform.isAndroid ? apk : ipa,
+        Platform.isAndroid ? apk : (Platform.isWindows ? exe : ipa),
       );
     } catch (_) {
       return null;
+    } finally {
+      client.close(force: true);
+    }
+  }
+
+  /// Windows : télécharge l'installateur dans le dossier temporaire, le lance
+  /// en mode silencieux puis ferme Choutify pour qu'il puisse remplacer les
+  /// fichiers. L'installateur relance Choutify à la fin.
+  static Future<void> installWindowsUpdate(
+      String url, void Function(double progress) onProgress) async {
+    final client = HttpClient()..connectionTimeout = const Duration(seconds: 15);
+    try {
+      final req = await client.getUrl(Uri.parse(url));
+      req.headers.set('User-Agent', 'Choutify');
+      final res = await req.close();
+      if (res.statusCode != 200) {
+        throw HttpException('Téléchargement impossible (${res.statusCode})');
+      }
+      final file = File(
+          '${Directory.systemTemp.path}${Platform.pathSeparator}Choutify-setup.exe');
+      final sink = file.openWrite();
+      final total = res.contentLength;
+      var received = 0;
+      await for (final chunk in res) {
+        sink.add(chunk);
+        received += chunk.length;
+        if (total > 0) onProgress(received / total);
+      }
+      await sink.close();
+      await Process.start(
+        file.path,
+        ['/SILENT', '/SUPPRESSMSGBOXES', '/NORESTART'],
+        mode: ProcessStartMode.detached,
+      );
+      exit(0);
     } finally {
       client.close(force: true);
     }
