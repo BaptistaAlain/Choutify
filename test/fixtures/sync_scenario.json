@@ -1,0 +1,199 @@
+{
+ "keys": [
+  [
+   "Rock\\Noir Désir\\01 - Le Vent.MP3",
+   "rock/noir desir/01 - le vent.mp3"
+  ],
+  [
+   "Été/Œuvre.mp3",
+   "ete/oeuvre.mp3"
+  ],
+  [
+   "Café/a.mp3",
+   "cafe/a.mp3"
+  ],
+  [
+   "AC:DC/Back?.mp3",
+   "ac_dc/back_.mp3"
+  ],
+  [
+   "Ça  /  Ira .flac",
+   "ca/ira .flac"
+  ],
+  [
+   "Ñandú/ß.ogg",
+   "nandu/ss.ogg"
+  ]
+ ],
+ "docs": [
+  {
+   "format": "choutify-sync",
+   "v": 1,
+   "likes": {
+    "a.mp3": [
+     1,
+     100
+    ],
+    "b.mp3": [
+     1,
+     100
+    ]
+   },
+   "playlists": {
+    "p1": {
+     "name": "Route",
+     "nt": 100,
+     "c": 5,
+     "del": 0,
+     "items": {
+      "a.mp3": {
+       "on": 1,
+       "t": 100,
+       "pos": 0,
+       "pt": 100
+      },
+      "c.mp3": {
+       "on": 1,
+       "t": 100,
+       "pos": 1,
+       "pt": 100
+      },
+      "d.mp3": {
+       "on": 1,
+       "t": 115,
+       "pos": 2,
+       "pt": 115
+      }
+     }
+    },
+    "p2": {
+     "name": "Vieux",
+     "nt": 100,
+     "c": 6,
+     "del": 0,
+     "items": {
+      "e.mp3": {
+       "on": 1,
+       "t": 100,
+       "pos": 0,
+       "pt": 100
+      }
+     }
+    }
+   },
+   "plays": {
+    "a.mp3": {
+     "pc": [
+      3,
+      50
+     ]
+    }
+   }
+  },
+  {
+   "format": "choutify-sync",
+   "v": 1,
+   "likes": {
+    "d.mp3": [
+     1,
+     110
+    ],
+    "a.mp3": [
+     1,
+     100
+    ],
+    "b.mp3": [
+     0,
+     120
+    ]
+   },
+   "playlists": {
+    "p1": {
+     "name": "Route 66",
+     "nt": 120,
+     "c": 5,
+     "del": 0,
+     "items": {
+      "a.mp3": {
+       "on": 1,
+       "t": 100,
+       "pos": 0,
+       "pt": 100
+      },
+      "c.mp3": {
+       "on": 1,
+       "t": 100,
+       "pos": 1,
+       "pt": 100
+      },
+      "b.mp3": {
+       "on": 1,
+       "t": 120,
+       "pos": 0.5,
+       "pt": 120
+      }
+     }
+    },
+    "p2": {
+     "name": "Vieux",
+     "nt": 100,
+     "c": 6,
+     "del": 120,
+     "items": {
+      "e.mp3": {
+       "on": 1,
+       "t": 100,
+       "pos": 0,
+       "pt": 100
+      }
+     }
+    }
+   },
+   "plays": {
+    "a.mp3": {
+     "phone": [
+      3,
+      90
+     ],
+     "pc": [
+      3,
+      50
+     ]
+    }
+   }
+  }
+ ],
+ "known": [
+  "a.mp3",
+  "b.mp3",
+  "c.mp3",
+  "d.mp3",
+  "e.mp3"
+ ],
+ "merged": "{\"format\":\"choutify-sync\",\"likes\":{\"a.mp3\":[1,100],\"b.mp3\":[0,120],\"d.mp3\":[1,110]},\"playlists\":{\"p1\":{\"c\":5,\"del\":0,\"items\":{\"a.mp3\":{\"on\":1,\"pos\":0,\"pt\":100,\"t\":100},\"b.mp3\":{\"on\":1,\"pos\":0.5,\"pt\":120,\"t\":120},\"c.mp3\":{\"on\":1,\"pos\":1,\"pt\":100,\"t\":100},\"d.mp3\":{\"on\":1,\"pos\":2,\"pt\":115,\"t\":115}},\"name\":\"Route 66\",\"nt\":120},\"p2\":{\"c\":6,\"del\":120,\"items\":{\"e.mp3\":{\"on\":1,\"pos\":0,\"pt\":100,\"t\":100}},\"name\":\"Vieux\",\"nt\":100}},\"plays\":{\"a.mp3\":{\"pc\":[3,50],\"phone\":[3,90]}},\"v\":1}",
+ "projection": {
+  "likes": [
+   "a.mp3",
+   "d.mp3"
+  ],
+  "playlists": [
+   {
+    "id": "p1",
+    "name": "Route 66",
+    "createdAt": 5,
+    "keys": [
+     "a.mp3",
+     "b.mp3",
+     "c.mp3",
+     "d.mp3"
+    ]
+   }
+  ],
+  "plays": {
+   "a.mp3": {
+    "count": 6,
+    "last": 90
+   }
+  }
+ }
+}

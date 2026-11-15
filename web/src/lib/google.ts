@@ -11,7 +11,11 @@ const AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const REVOKE_URL = 'https://oauth2.googleapis.com/revoke';
 const API = 'https://www.googleapis.com/drive/v3';
-export const SCOPE = 'https://www.googleapis.com/auth/drive.readonly';
+// Accès complet au Drive : la lecture de la musique, et l'écriture du petit
+// fichier de synchronisation dans le dossier « Choutify-synchro ». Choutify ne
+// modifie ni ne supprime aucun autre fichier.
+export const SCOPE = 'https://www.googleapis.com/auth/drive';
+const UPLOAD = 'https://www.googleapis.com/upload/drive/v3';
 
 const CONFIG_KEY = 'choutify.google.config';
 const TOKEN_KEY = 'choutify.google.token';
@@ -24,6 +28,7 @@ export interface GoogleConfig {
 
 interface TokenState {
   refreshToken?: string;
+  scope?: string;
   accessToken?: string;
   expiresAt?: number;
 }
@@ -66,6 +71,12 @@ export function isConfigured() {
 
 export function isConnected() {
   return !!readJson<TokenState>(TOKEN_KEY)?.refreshToken;
+}
+
+/** Vrai si la connexion autorise l'écriture (connexions d'avant la synchro : lecture seule). */
+export function canWrite() {
+  const scopes = (readJson<TokenState>(TOKEN_KEY)?.scope ?? '').split(/\s+/);
+  return scopes.includes(SCOPE);
 }
 
 /** Adresse de retour à déclarer dans Google Cloud (l'adresse de l'app). */
@@ -144,6 +155,7 @@ export async function handleRedirect(): Promise<{ returnHash: string } | null> {
   if (!res.ok) throw new AuthError(describeTokenError(json));
   writeJson(TOKEN_KEY, {
     refreshToken: json.refresh_token,
+    scope: json.scope,
     accessToken: json.access_token,
     expiresAt: Date.now() + (json.expires_in ?? 3600) * 1000,
   } satisfies TokenState);
@@ -186,6 +198,7 @@ export async function getAccessToken(): Promise<string> {
       }
       const next: TokenState = {
         refreshToken: json.refresh_token || t.refreshToken,
+        scope: json.scope || t.scope,
         accessToken: json.access_token,
         expiresAt: Date.now() + (json.expires_in ?? 3600) * 1000,
       };
@@ -260,13 +273,15 @@ export interface DriveFile {
   mimeType: string;
   size?: string;
   modifiedTime?: string;
+  createdTime?: string;
   md5Checksum?: string;
+  parents?: string[];
   shortcutDetails?: { targetId: string; targetMimeType: string };
 }
 
 export const FOLDER = 'application/vnd.google-apps.folder';
 const SHORTCUT = 'application/vnd.google-apps.shortcut';
-const FIELDS = 'nextPageToken, files(id, name, mimeType, size, modifiedTime, md5Checksum, shortcutDetails)';
+const FIELDS = 'nextPageToken, files(id, name, mimeType, size, modifiedTime, createdTime, md5Checksum, shortcutDetails, parents)';
 
 async function listAll(q: string, orderBy?: string): Promise<DriveFile[]> {
   const out: DriveFile[] = [];
@@ -368,4 +383,71 @@ export async function download(
     if (size > 0) onProgress(Math.min(1, got / size));
   }
   return new Blob(chunks, { type: mime });
+}
+
+// ------------------------------------------------- dossier de synchronisation
+
+/** Dossiers portant ce nom, où qu'ils soient dans le Drive. */
+export function findFoldersNamed(name: string) {
+  return listAll(`name = '${name.replace(/'/g, "\\'")}' and mimeType = '${FOLDER}' and trashed = false`);
+}
+
+export async function getMeta(id: string): Promise<{ id: string; name: string; parents?: string[] }> {
+  return apiJson(`files/${encodeURIComponent(id)}`, { fields: 'id, name, parents', supportsAllDrives: 'true' });
+}
+
+async function checked<T>(res: Response): Promise<T> {
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    const reason = body?.error?.errors?.[0]?.reason;
+    if (res.status === 403 && (reason === 'insufficientPermissions' || reason === 'forbidden')) {
+      throw new AuthError("Choutify n'a pas le droit d'écrire dans ton Drive : autorise la synchronisation dans les réglages.");
+    }
+    throw new Error(body?.error?.message || `Erreur Google Drive (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function createFolder(name: string, parentId: string): Promise<DriveFile> {
+  const res = await gfetch(`${API}/files?supportsAllDrives=true&fields=${encodeURIComponent('id, name, mimeType, modifiedTime')}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, mimeType: FOLDER, parents: [parentId] }),
+  });
+  return checked(res);
+}
+
+/** Crée un fichier JSON dans un dossier. */
+export async function createJsonFile(name: string, parentId: string, content: string): Promise<DriveFile> {
+  const boundary = `choutify${randomString(12)}`;
+  const body =
+    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n` +
+    JSON.stringify({ name, parents: [parentId], mimeType: 'application/json' }) +
+    `\r\n--${boundary}\r\nContent-Type: application/json\r\n\r\n` +
+    content +
+    `\r\n--${boundary}--`;
+  const res = await gfetch(`${UPLOAD}/files?uploadType=multipart&supportsAllDrives=true&fields=${encodeURIComponent('id, name, modifiedTime')}`, {
+    method: 'POST',
+    headers: { 'Content-Type': `multipart/related; boundary=${boundary}` },
+    body,
+  });
+  return checked(res);
+}
+
+/** Remplace le contenu d'un fichier (renvoie null s'il n'existe plus). */
+export async function updateJsonFile(id: string, content: string): Promise<DriveFile | null> {
+  const res = await gfetch(`${UPLOAD}/files/${encodeURIComponent(id)}?uploadType=media&supportsAllDrives=true&fields=${encodeURIComponent('id, name, modifiedTime, trashed')}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: content,
+  });
+  if (res.status === 404) return null;
+  const f = await checked<DriveFile & { trashed?: boolean }>(res);
+  return f.trashed ? null : f;
+}
+
+export async function downloadText(id: string): Promise<string> {
+  const res = await gfetch(mediaUrl(id), { cache: 'no-store' });
+  if (!res.ok) throw new Error(`Lecture impossible (${res.status})`);
+  return res.text();
 }

@@ -367,6 +367,7 @@ async function doScan() {
     await fillMissingCovers();
     setScan({ running: false, phase: '', done: 0, total: 0 });
     await db.put('kv', 'lastScan', Date.now());
+    window.dispatchEvent(new Event('choutify:scanned'));
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     setScan({ running: false, phase: '', error: msg });
@@ -577,13 +578,19 @@ export function search(query: string) {
 
 // ------------------------------------------------------- playlists, favoris
 
+/** Signale une modification à synchroniser (playlists, favoris, écoutes). */
+function userDataChanged() {
+  window.dispatchEvent(new Event('choutify:userdata'));
+}
+
 async function savePlaylists(playlists: Playlist[]) {
   lib.set({ playlists });
   await db.put('kv', 'playlists', playlists);
+  userDataChanged();
 }
 
 export async function createPlaylist(name: string, trackIds: string[] = []) {
-  const p: Playlist = { id: `pl${Date.now().toString(36)}`, name, trackIds, createdAt: Date.now(), updatedAt: Date.now() };
+  const p: Playlist = { id: `pl${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, name, trackIds, createdAt: Date.now(), updatedAt: Date.now() };
   await savePlaylists([...lib.get().playlists, p]);
   return p;
 }
@@ -611,6 +618,7 @@ export async function toggleLike(id: string) {
   else likes.add(id);
   lib.set({ likes });
   await db.put('kv', 'likes', [...likes]);
+  userDataChanged();
   return likes.has(id);
 }
 
@@ -622,6 +630,7 @@ export function recordPlay(id: string) {
   lib.set({ stats });
   clearTimeout(statsTimer);
   statsTimer = setTimeout(() => db.put('kv', 'stats', lib.get().stats), 1000);
+  userDataChanged();
 }
 
 export async function saveSettings(patch: Partial<Settings>) {

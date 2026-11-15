@@ -11,6 +11,7 @@ import 'navigation.dart';
 import 'screens/shell.dart';
 import 'services/paths.dart';
 import 'services/permissions.dart';
+import 'services/sync_service.dart';
 import 'state/library_state.dart';
 import 'state/player_state.dart';
 import 'theme.dart';
@@ -40,8 +41,11 @@ Future<void> main() async {
   await library.load();
   final player = PlayerState(library, prefs);
   await player.restore();
+  final sync = SyncService(library, prefs);
 
-  runApp(ChoutifyApp(library: library, player: player));
+  runApp(ChoutifyApp(library: library, player: player, sync: sync));
+  // Playlists, titres aimés et écoutes partagés avec l'app iPhone (Windows).
+  sync.start();
 
   // Analyse incrémentale au démarrage pour détecter les nouveaux fichiers.
   if (library.hasFolders) {
@@ -52,9 +56,10 @@ Future<void> main() async {
 }
 
 class ChoutifyApp extends StatefulWidget {
-  const ChoutifyApp({super.key, required this.library, required this.player});
+  const ChoutifyApp({super.key, required this.library, required this.player, required this.sync});
   final LibraryState library;
   final PlayerState player;
+  final SyncService sync;
 
   @override
   State<ChoutifyApp> createState() => _ChoutifyAppState();
@@ -78,6 +83,9 @@ class _ChoutifyAppState extends State<ChoutifyApp> with WidgetsBindingObserver {
     if (state == AppLifecycleState.paused || state == AppLifecycleState.detached) {
       widget.player.persist();
     }
+    if (state == AppLifecycleState.resumed) {
+      widget.sync.syncSoon(const Duration(seconds: 1));
+    }
   }
 
   @override
@@ -86,6 +94,7 @@ class _ChoutifyAppState extends State<ChoutifyApp> with WidgetsBindingObserver {
       providers: [
         ChangeNotifierProvider.value(value: widget.library),
         ChangeNotifierProvider.value(value: widget.player),
+        ChangeNotifierProvider.value(value: widget.sync),
       ],
       child: MaterialApp(
         title: 'Choutify',
