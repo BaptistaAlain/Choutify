@@ -30,6 +30,7 @@ self.addEventListener('fetch', (event) => {
   // Ne touche jamais aux requêtes Google (API Drive, connexion).
   if (url.origin !== self.location.origin) return;
   if (url.pathname.includes('/__audio/') || url.pathname.endsWith('/version.json')) return;
+  if (url.pathname.endsWith('/confidentialite.html')) return;
 
   if (req.mode === 'navigate') {
     // Réseau d'abord : on récupère toujours la dernière version publiée.
