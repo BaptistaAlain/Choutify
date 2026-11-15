@@ -3,7 +3,9 @@ name: CI
 on:
   push:
     branches-ignore: [main]
+    paths-ignore: ['web/**', '.github/workflows/web.yml']
   pull_request:
+    paths-ignore: ['web/**', '.github/workflows/web.yml']
   workflow_dispatch:
 
 concurrency:
