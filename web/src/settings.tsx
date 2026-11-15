@@ -265,6 +265,9 @@ export function Settings() {
         <a class="text-btn" href="https://github.com/BaptistaAlain/Choutify" target="_blank" rel="noopener">
           Code source sur GitHub
         </a>
+        <a class="text-btn" href="./confidentialite.html" target="_blank" rel="noopener">
+          Règles de confidentialité
+        </a>
         <button
           class="text-btn danger"
           onClick={async () => {
